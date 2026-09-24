@@ -1,0 +1,28 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tracking {
+  id             String   @id @default(uuid())
+  trackingNumber String   @unique
+  customerName   String
+  status         String // "delivered" | "in_transit" | "delayed" | "problem"
+  eta            String // human-readable date, e.g. "2026-09-28"
+  address        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Complaint {
+  id             String   @id @default(uuid())
+  trackingNumber String
+  type           String // "damaged" | "lost" | "wrong_item"
+  details        String
+  createdAt      DateTime @default(now())
+}
