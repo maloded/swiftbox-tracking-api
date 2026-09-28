@@ -1,4 +1,4 @@
-import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export const COMPLAINT_TYPES = ['damaged', 'lost', 'wrong_item'] as const;
 
@@ -11,4 +11,10 @@ export class CreateComplaintDto {
   @IsString()
   @IsNotEmpty()
   details: string;
+
+  // Presence/validity is checked in the service so a missing token also
+  // yields 401 "Verification required" instead of a generic 400.
+  @IsOptional()
+  @IsString()
+  verifyToken: string;
 }

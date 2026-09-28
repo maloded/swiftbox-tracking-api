@@ -2,9 +2,11 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateComplaintDto } from './dto/create-complaint.dto';
+import { normalizeTrackingNumber } from './utils/otp.util';
 import { toSpokenDate } from './utils/spoken-date';
 
 // Public response shape expected by the Hanc.ai Tool-node
@@ -34,8 +36,44 @@ export class TrackingService {
     return { ...tracking, eta_spoken: toSpokenDate(tracking.eta) };
   }
 
-  async reschedule(trackingNumber: string, newDate: string) {
+  private async assertVerifyToken(
+    trackingNumber: string,
+    verifyToken?: string,
+  ) {
+    if (!verifyToken) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Verification required',
+      });
+    }
+    const normalized = normalizeTrackingNumber(trackingNumber);
+    const challenge = await this.prisma.otpChallenge.findUnique({
+      where: { verifyToken },
+    });
+    const now = new Date();
+    if (
+      !challenge ||
+      challenge.trackingNumber !== normalized ||
+      !challenge.verifyExpiresAt ||
+      challenge.verifyExpiresAt <= now
+    ) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Verification required',
+      });
+    }
+  }
+
+  async reschedule(
+    trackingNumber: string,
+    newDate: string,
+    verifyToken?: string,
+  ) {
+    // 404 for an unknown tracking number must stay reachable: a challenge
+    // can never exist for a trackingNumber that otp/send itself 404s on,
+    // so existence has to be checked before the token.
     const tracking = await this.findOne(trackingNumber);
+    await this.assertVerifyToken(trackingNumber, verifyToken);
     if (tracking.status !== 'in_transit') {
       throw new BadRequestException({
         statusCode: 400,
@@ -51,11 +89,21 @@ export class TrackingService {
   }
 
   async createComplaint(trackingNumber: string, dto: CreateComplaintDto) {
+    const tracking = await this.prisma.tracking.findUnique({
+      where: { trackingNumber },
+      select: { trackingNumber: true },
+    });
+    if (!tracking) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Tracking number not found',
+      });
+    }
+    await this.assertVerifyToken(trackingNumber, dto.verifyToken);
     const [complaint] = await this.prisma.$transaction([
       this.prisma.complaint.create({
         data: { trackingNumber, type: dto.type, details: dto.details },
       }),
-      // updateMany doesn't throw when the tracking number is unknown
       this.prisma.tracking.updateMany({
         where: { trackingNumber },
         data: { status: 'problem' },

@@ -15,6 +15,7 @@ model Tracking {
   status         String // "delivered" | "in_transit" | "delayed" | "problem"
   eta            String // human-readable date, e.g. "2026-09-28"
   address        String
+  customerEmail  String? // email on file for OTP verification; never caller-supplied
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -25,4 +26,18 @@ model Complaint {
   type           String // "damaged" | "lost" | "wrong_item"
   details        String
   createdAt      DateTime @default(now())
+}
+
+model OtpChallenge {
+  id              String    @id @default(uuid())
+  trackingNumber  String
+  codeHash        String
+  expiresAt       DateTime
+  attempts        Int       @default(0)
+  consumedAt      DateTime?
+  verifyToken     String?   @unique
+  verifyExpiresAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([trackingNumber])
 }

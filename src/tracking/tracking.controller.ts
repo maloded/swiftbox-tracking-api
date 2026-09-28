@@ -1,9 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiKeyGuard } from './api-key.guard';
 import { CreateComplaintDto } from './dto/create-complaint.dto';
 import { RescheduleDto } from './dto/reschedule.dto';
 import { TrackingService } from './tracking.service';
 
 @Controller('tracking')
+@UseGuards(ApiKeyGuard)
 export class TrackingController {
   constructor(private readonly trackingService: TrackingService) {}
 
@@ -17,7 +27,11 @@ export class TrackingController {
     @Param('trackingNumber') trackingNumber: string,
     @Body() dto: RescheduleDto,
   ) {
-    return this.trackingService.reschedule(trackingNumber, dto.newDate);
+    return this.trackingService.reschedule(
+      trackingNumber,
+      dto.newDate,
+      dto.verifyToken,
+    );
   }
 
   @Post(':trackingNumber/complaint')
