@@ -45,7 +45,8 @@ json
   "customerName": "John Doe",
   "status": "in_transit",
   "eta": "2026-09-28",
-  "address": "123 Main St"
+  "address": "123 Main St",
+  "eta_spoken": "September 28th"
 }
 
 Не найдено (404):

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateComplaintDto } from './dto/create-complaint.dto';
+import { toSpokenDate } from './utils/spoken-date';
 
 // Public response shape expected by the Hanc.ai Tool-node
 const trackingSelect = {
@@ -30,7 +31,7 @@ export class TrackingService {
         message: 'Tracking number not found',
       });
     }
-    return tracking;
+    return { ...tracking, eta_spoken: toSpokenDate(tracking.eta) };
   }
 
   async reschedule(trackingNumber: string, newDate: string) {
@@ -41,11 +42,12 @@ export class TrackingService {
         message: `Cannot reschedule a package with status '${tracking.status}'`,
       });
     }
-    return this.prisma.tracking.update({
+    const updated = await this.prisma.tracking.update({
       where: { trackingNumber },
       data: { eta: newDate },
       select: trackingSelect,
     });
+    return { ...updated, eta_spoken: toSpokenDate(updated.eta) };
   }
 
   async createComplaint(trackingNumber: string, dto: CreateComplaintDto) {
